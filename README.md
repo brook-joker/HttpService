@@ -1,12 +1,13 @@
 # HttpService
 -------------------------------
 
-[![Method count](https://img.shields.io/badge/Method count  - 46-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3ARxDebounceClick%3A1.1.1)
-[![Size](https://img.shields.io/badge/Size  - 7 KB-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3ARxDebounceClick%3A1.1.1)
+[![TeamCity CodeBetter](https://img.shields.io/teamcity/codebetter/bt428.svg?maxAge=2592000)]()
+[![Method count](https://img.shields.io/badge/Method count  - 417-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
+[![Size](https://img.shields.io/badge/Size  - 52 KB-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
 
-[![GitHub stars](https://img.shields.io/github/stars/SmartDengg/RxDebounceClick.svg?style=social&label=Star&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/RxDebounceClick/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/SmartDengg/RxDebounceClick.svg?style=social&label=Fork&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/RxDebounceClick/network)
-[![GitHub issues](https://img.shields.io/github/issues/SmartDengg/RxDebounceClick.svg?style=social&label=Issue&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/RxDebounceClick/issues)
+[![GitHub stars](https://img.shields.io/github/stars/SmartDengg/HttpService.svg?style=social&label=Star&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/HttpService/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/SmartDengg/HttpService.svg?style=social&label=Fork&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/HttpService/network)
+[![GitHub issues](https://img.shields.io/github/issues/SmartDengg/HttpService.svg?style=social&label=Issue&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/HttpService/issues)
 
 [![GitHub license](https://img.shields.io/badge/License  - MIT-blue.svg?style=flat-square)](LICENSE.txt)
 
@@ -533,4 +534,33 @@ HttpLoggingInterceptor loggingInterceptor = HttpLoggingInterceptor.createLogging
 
 ## 开发者列表
 
-- 邓伟 - dengwei@lianjia.com
+- 邓伟 - Hi4Joker@gmail.com
+- [小鄧子的简书](http://www.jianshu.com/users/df40282480b4/latest_articles)
+
+<a href="http://weibo.com/5367097592/profile?rightmod=1&wvr=6&mod=personinfo">
+  <img alt="Follow me on Weibo" src="http://upload-images.jianshu.io/upload_images/268450-50e41e15ac29b776.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" />
+</a>
+
+License
+--------
+
+	Copyright (c) 2016 小鄧子
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+

@@ -2,7 +2,7 @@
 -------------------------------
 
 [![HttpService](https://img.shields.io/badge/HttpService - 1.3.2-00ae66.svg?style=flat-square&maxAge=2592000)]()
-[![Apache License](https://img.shields.io/badge/License - Apache%202-blue.svg?style=flat-square)]
+[![Apache License](https://img.shields.io/badge/License - MIT%202-blue.svg?style=flat-square)]
 (LICENSE.txt)
 
 ## 简介

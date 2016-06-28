@@ -1,58 +1,67 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+
+group = 'com.github.smartdengg'
+
+def STRING = "String"
+def LIBRARY_VERSION = "LIBRARY_VERSION"
+def HTTP_LOG_TAG = "HTTP_LOG_TAG"
 
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
-    buildToolsVersion rootProject.ext.buildToolsVersion
+  compileSdkVersion rootProject.ext.android.compileSdkVersion
+  buildToolsVersion rootProject.ext.android.buildToolsVersion
 
-    defaultConfig {
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.compileSdkVersion
-        versionCode rootProject.ext.versionCode
-        versionName rootProject.ext.versionName
-        buildConfigField "String", "HTTP_TAG", "\"${rootProject.ext.httpLogTAG}\""
-    }
+  defaultConfig {
+    minSdkVersion rootProject.ext.android.minSdkVersion
+    targetSdkVersion rootProject.ext.android.targetSdkVersion
+    versionCode rootProject.ext.android.versionCode
+    versionName rootProject.ext.android.versionName
 
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
+    buildConfigField STRING, HTTP_LOG_TAG, "\"${rootProject.ext.httpLogTAG}\""
+    buildConfigField STRING, LIBRARY_VERSION, "\"${rootProject.ext.VERSION_NAME}\""
+  }
 
-    lintOptions {
-        abortOnError false
+  buildTypes {
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
     }
+  }
+
+  lintOptions {
+    abortOnError false
+  }
 }
 
 // Trigger BuildConfig creation
 project.afterEvaluate {
-    tasks.all { task ->
-        if (task.name =~ /generate.*BuildConfig/) {
-            task.dependsOn(propagateBuildConfig)
-        }
+  tasks.all { task ->
+    if (task.name =~ /generate.*BuildConfig/) {
+      task.dependsOn(propagateBuildConfig)
     }
+  }
 }
 
 task propagateBuildConfig << {
-    project.android.buildTypes.all {
-        type -> type.buildConfigField "boolean", "RELEASE", isVariantRelease().toString()
-    }
+  project.android.buildTypes.all {
+    type -> type.buildConfigField "boolean", "RELEASE", isVariantRelease().toString()
+  }
 }
 
 def isVariantRelease() {
-    return rootProject.ext.variantRelease
+  return rootProject.ext.variantRelease
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+  compile fileTree(dir: 'libs', include: ['*.jar'])
 
-    /*Google Libr*/
-    compile "com.google.code.gson:gson:$GSON_LIBRARY_VERSION"
+  /*Google Library*/
+  compile rootProject.ext.dependencies.libGson
 
-    /*Square Library*/
-    compile "com.squareup.retrofit2:retrofit:$RETROFIT_LIBRARY_VERSION"
+  /*Square Library*/
+  compile rootProject.ext.dependencies.libRetrofit2
 
-    /*ReactiveX Library*/
-    compile "io.reactivex:rxjava:$RXJAVA_LIBRARAY_VERSION"
-    compile "io.reactivex:rxandroid:$RXANDROID_LIBRARAY_VERSION"
+  /*ReactiveX Library*/
+  compile rootProject.ext.dependencies.libRxJava
+  compile rootProject.ext.dependencies.libRxAndroid
 }

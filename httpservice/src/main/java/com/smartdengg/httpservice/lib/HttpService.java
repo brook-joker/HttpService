@@ -28,7 +28,7 @@ public class HttpService {
 
     static class Settings {
 
-        private static String httpTag = BuildConfig.HTTP_TAG;
+        private static String httpTag = BuildConfig.HTTP_LOG_TAG;
         private static boolean enableResponseLog = true;
 
         private static Settings sSettings = new Settings();

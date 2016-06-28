@@ -35,7 +35,7 @@ allprojects {
 - 其次，在你的module的`Gradle`中添加类库地址
 ```groovy
 dependencies {
-	com.github.SmartDengg:HttpService:0.1.0
+	compile 'com.github.SmartDengg:HttpService:0.1.0'
 }
 ```
 

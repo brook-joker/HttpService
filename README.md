@@ -1,7 +1,8 @@
 # HttpService
 -------------------------------
-
+[![](https://jitpack.io/v/SmartDengg/HttpService.svg)](https://jitpack.io/#SmartDengg/HttpService)
 [![TeamCity CodeBetter](https://img.shields.io/teamcity/codebetter/bt428.svg?maxAge=2592000)]()
+
 [![Method count](https://img.shields.io/badge/Method count  - 417-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
 [![Size](https://img.shields.io/badge/Size  - 52 KB-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
 

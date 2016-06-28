@@ -1,0 +1,58 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.compileSdkVersion
+        versionCode rootProject.ext.versionCode
+        versionName rootProject.ext.versionName
+        buildConfigField "String", "HTTP_TAG", "\"${rootProject.ext.httpLogTAG}\""
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+}
+
+// Trigger BuildConfig creation
+project.afterEvaluate {
+    tasks.all { task ->
+        if (task.name =~ /generate.*BuildConfig/) {
+            task.dependsOn(propagateBuildConfig)
+        }
+    }
+}
+
+task propagateBuildConfig << {
+    project.android.buildTypes.all {
+        type -> type.buildConfigField "boolean", "RELEASE", isVariantRelease().toString()
+    }
+}
+
+def isVariantRelease() {
+    return rootProject.ext.variantRelease
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+
+    /*Google Libr*/
+    compile "com.google.code.gson:gson:$GSON_LIBRARY_VERSION"
+
+    /*Square Library*/
+    compile "com.squareup.retrofit2:retrofit:$RETROFIT_LIBRARY_VERSION"
+
+    /*ReactiveX Library*/
+    compile "io.reactivex:rxjava:$RXJAVA_LIBRARAY_VERSION"
+    compile "io.reactivex:rxandroid:$RXANDROID_LIBRARAY_VERSION"
+}

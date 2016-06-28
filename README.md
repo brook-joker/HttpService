@@ -2,8 +2,7 @@
 -------------------------------
 
 [![HttpService](https://img.shields.io/badge/HttpService - 1.3.2-00ae66.svg?style=flat-square&maxAge=2592000)]()
-[![Apache License](https://img.shields.io/badge/License - MIT-blue.svg?style=flat-square)]
-(LICENSE.txt)
+[![Apache License](https://img.shields.io/badge/License - MIT-blue.svg?style=flat-square)](LICENSE.txt)
 
 ## 简介
 
@@ -11,7 +10,7 @@
 
 ## 下载
 
-因为该类库还依赖一些其它Library，如：[Retrofit](https://github.com/square/retrofit)，[RxJava](https://github.com/ReactiveX/RxJava)，[Gson](https://github.com/google/gson)，[Logger](https://github.com/orhanobut/logger)等。
+因为该类库还依赖一些其它Library，如：[Retrofit](https://github.com/square/retrofit)，[RxJava](https://github.com/ReactiveX/RxJava)，[Gson](https://github.com/google/gson)等。
 因此在`build.gradle`中需要添加[最新版本](./CHANGELOG.md)的依赖：
 
 - 首先，在根`Gradle`文件中添加JitPack仓库
@@ -142,7 +141,6 @@ private void uploadFile(String filePath) {
                  System.err.println(t.getMessage());
             }
         });
-
 }
 
 ```

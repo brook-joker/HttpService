@@ -20,45 +20,78 @@ import com.smartdengg.httpservice.lib.errors.HttpException;
 import retrofit2.Response;
 import rx.Observable;
 import rx.Observable.Operator;
+import rx.Producer;
 import rx.Subscriber;
 import rx.functions.Func1;
+import rx.internal.util.RxJavaPluginUtils;
 
 /**
  * A version of {@link Observable#map(Func1)} which lets us trigger {@code onError} without having
  * to use {@link Observable#flatMap(Func1)} which breaks producer requests from propagating.
  */
 final class OperatorMapResponseToBodyOrError<T> implements Operator<T, Response<T>> {
-  private static final OperatorMapResponseToBodyOrError<Object> INSTANCE = new OperatorMapResponseToBodyOrError<>();
+  private static final OperatorMapResponseToBodyOrError<Object> INSTANCE =
+      new OperatorMapResponseToBodyOrError<>();
 
   @SuppressWarnings("unchecked") // Safe because of erasure.
   static <R> OperatorMapResponseToBodyOrError<R> instance() {
     return (OperatorMapResponseToBodyOrError<R>) INSTANCE;
   }
 
-  @Override
-  public Subscriber<? super Response<T>> call(final Subscriber<? super T> child) {
-    return new Subscriber<Response<T>>(child) {
-      @Override
-      public void onNext(Response<T> response) {
+  @Override public Subscriber<? super Response<T>> call(final Subscriber<? super T> child) {
+    MapResponseSubscriber<T> parent = new MapResponseSubscriber<>(child);
+    child.add(parent);
+    return parent;
+  }
 
-        Integer code = response.code();
+  static final class MapResponseSubscriber<T> extends Subscriber<Response<T>> {
 
-        if (response.isSuccessful() && code != HttpCallAdapter.CODE_204 && code != HttpCallAdapter.CODE_205) {
-          child.onNext(response.body());
-        } else {
-          child.onError(new HttpException(response));
-        }
+    private Subscriber<? super T> actual;
+
+    private boolean done;
+
+    public MapResponseSubscriber(Subscriber<? super T> actual) {
+      this.actual = actual;
+    }
+
+    @Override public void onCompleted() {
+
+      if (done) return;
+
+      done = true;
+
+      actual.onCompleted();
+    }
+
+    @Override public void onError(Throwable e) {
+
+      if (done) {
+        RxJavaPluginUtils.handleException(e);
+        return;
       }
 
-      @Override
-      public void onCompleted() {
-        child.onCompleted();
-      }
+      done = true;
 
-      @Override
-      public void onError(Throwable e) {
-        child.onError(e);
+      actual.onError(e);
+    }
+
+    @Override public void onNext(Response<T> response) {
+
+      if (isUnsubscribed()) return;
+
+      Integer code = response.code();
+
+      if (response.isSuccessful()
+          && code != HttpCallAdapter.CODE_204
+          && code != HttpCallAdapter.CODE_205) {
+        actual.onNext(response.body());
+      } else {
+        actual.onError(new HttpException(response));
       }
-    };
+    }
+
+    @Override public void setProducer(Producer p) {
+      actual.setProducer(p);
+    }
   }
 }

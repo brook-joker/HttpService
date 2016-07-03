@@ -41,208 +41,199 @@ import rx.schedulers.Schedulers;
  */
 public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
 
-    private static final int INITIAL = 1;
+  private static final int INITIAL = 1;
 
-    public static RxJavaCallAdapterFactory create() {
-        return new RxJavaCallAdapterFactory();
+  public static RxJavaCallAdapterFactory create() {
+    return new RxJavaCallAdapterFactory();
+  }
+
+  private RxJavaCallAdapterFactory() {
+  }
+
+  @Override
+  public CallAdapter<?> get(Type returnType, Annotation[] annotations, Retrofit retrofit) {
+
+    int retryCount = 0;
+
+    for (Annotation annotation : annotations) {
+      if (!RetryCount.class.isAssignableFrom(annotation.getClass())) {
+        continue;
+      }
+      retryCount = ((RetryCount) annotation).count();
+      if (retryCount < 0) throw new IllegalArgumentException("@RetryCount must not be less than 0");
     }
 
-    private RxJavaCallAdapterFactory() {
+    Class<?> rawType = getRawType(returnType);
+    boolean isObservable = "rx.Observable".equals(rawType.getCanonicalName());
+    boolean isSingle = "rx.Single".equals(rawType.getCanonicalName());
+    boolean isCompletable = "rx.Completable".equals(rawType.getCanonicalName());
+
+    if (!isObservable && !isSingle && !isCompletable) {
+      return null;
     }
 
-    @Override
-    public CallAdapter<?> get(Type returnType, Annotation[] annotations, Retrofit retrofit) {
+    if (!isCompletable && !(returnType instanceof ParameterizedType)) {
 
-        int retryCount = 0;
+      String name = isSingle ? "Single" : "Observable";
+      throw new IllegalStateException(
+          name + " return type must be parameterized" + " as " + name + "<Foo> or " +
+              name +
+              "<? extends Foo>");
+    }
 
-        for (Annotation annotation : annotations) {
-            if (!RetryCount.class.isAssignableFrom(annotation.getClass())) {
-                continue;
+    if (isCompletable) {
+      return CompletableHelper.createCallAdapter();
+    }
+
+    CallAdapter<Observable<?>> callAdapter =
+        RxJavaCallAdapterFactory.this.getCallAdapter(returnType, retryCount);
+    if (isSingle) {
+      return SingleHelper.makeSingle(callAdapter);
+    } else {
+      return callAdapter;
+    }
+  }
+
+  private CallAdapter<Observable<?>> getCallAdapter(Type returnType, int maxConnect) {
+    Type observableType = getParameterUpperBound(0, (ParameterizedType) returnType);
+    return new SimpleCallAdapter(observableType, maxConnect);
+  }
+
+  static final class SimpleCallAdapter implements CallAdapter<Observable<?>> {
+
+    private final Type responseType;
+    private final int retryCount;
+
+    SimpleCallAdapter(Type responseType, int retryCount) {
+      this.responseType = responseType;
+      this.retryCount = ++retryCount;
+    }
+
+    @Override public Type responseType() {
+      return responseType;
+    }
+
+    @Override public <R> Observable<R> adapt(Call<R> call) {
+
+      return Observable.create(new CallOnSubscribe<>(call))
+          .lift(OperatorMapResponseToBodyOrError.<R>instance())
+          .retryWhen(new RetryWhenFunc(retryCount));
+    }
+  }
+
+  static final class CallOnSubscribe<T> implements Observable.OnSubscribe<Response<T>> {
+
+    private final Call<T> originalCall;
+
+    CallOnSubscribe(Call<T> originalCall) {
+      this.originalCall = originalCall;
+    }
+
+    @Override public void call(final Subscriber<? super Response<T>> subscriber) {
+      // Since Call is a one-shot type, clone it for each new subscriber.
+      Call<T> call = originalCall.clone();
+
+      // Wrap the call in a helper which handles both unsubscription and backpressure.
+      RequestArbiter<T> requestArbiter = new RequestArbiter<>(call, subscriber);
+      subscriber.add(requestArbiter);
+      subscriber.setProducer(requestArbiter);
+    }
+  }
+
+  static final class RequestArbiter<T> extends AtomicBoolean implements Subscription, Producer {
+
+    private final Call<T> call;
+    private final Subscriber<? super Response<T>> subscriber;
+
+    private final AtomicBoolean unsubscribed = new AtomicBoolean(false);
+
+    RequestArbiter(Call<T> call, Subscriber<? super Response<T>> subscriber) {
+      this.call = call;
+      this.subscriber = subscriber;
+    }
+
+    @Override public void request(long n) {
+      if (n < 0) throw new IllegalArgumentException("n < 0: " + n);
+      if (n == 0) return; // Nothing to do when requesting 0.
+      if (!this.compareAndSet(false, true)) return; // Request was already triggered.
+
+      try {
+        Response<T> response = call.execute();
+        if (!subscriber.isUnsubscribed() && !call.isCanceled()) {
+          subscriber.onNext(response);
+          subscriber.onCompleted();
+        }
+      } catch (Throwable t) {
+        Exceptions.throwIfFatal(t);
+        if (!subscriber.isUnsubscribed()) {
+          subscriber.onError(t);
+        }
+      }
+    }
+
+    @Override public void unsubscribe() {
+      if (this.unsubscribed.compareAndSet(false, true)) {
+        call.cancel();
+      }
+    }
+
+    @Override public boolean isUnsubscribed() {
+      return unsubscribed.get() && call.isCanceled();
+    }
+  }
+
+  static final class RetryWhenFunc
+      implements Func1<Observable<? extends Throwable>, Observable<Long>> {
+
+    private Integer maxRetryCount;
+
+    public RetryWhenFunc(Integer maxRetryCount) {
+      this.maxRetryCount = maxRetryCount;
+    }
+
+    @Override public Observable<Long> call(Observable<? extends Throwable> errorObservable) {
+      return errorObservable.zipWith(Observable.range(INITIAL, maxRetryCount),
+          new Func2<Throwable, Integer, InnerThrowable>() {
+
+            @Override public InnerThrowable call(Throwable throwable, Integer i) {
+              if (throwable instanceof IOException) return new InnerThrowable(throwable, i);
+              return new InnerThrowable(throwable, i);
             }
-            retryCount = ((RetryCount) annotation).count();
-            if (retryCount < 0) {
-                throw new IllegalArgumentException("@RetryCount must not be less than 0");
-            }
+          }).concatMap(new Func1<InnerThrowable, Observable<Long>>() {
+        @Override public Observable<Long> call(InnerThrowable innerThrowable) {
+
+          Integer retryCount = innerThrowable.getRetryCount();
+          if (maxRetryCount.equals(retryCount)) {
+            return Observable.error(innerThrowable.getThrowable());
+          }
+
+          /*use Schedulers#immediate() to keep on same thread */
+          return Observable.timer((long) Math.pow(2, retryCount), TimeUnit.SECONDS,
+              Schedulers.immediate());
         }
+      });
+    }
+  }
 
-        Class<?> rawType = getRawType(returnType);
-        boolean isObservable = "rx.Observable".equals(rawType.getCanonicalName());
-        boolean isSingle = "rx.Single".equals(rawType.getCanonicalName());
-        boolean isCompletable = "rx.Completable".equals(rawType.getCanonicalName());
+  private static class InnerThrowable {
 
-        if (!isObservable && !isSingle && !isCompletable) {
-            return null;
-        }
+    private Throwable throwable;
+    private Integer retryCount;
 
-        if (!isCompletable && !(returnType instanceof ParameterizedType)) {
+    public InnerThrowable(Throwable throwable, Integer retryCount) {
+      Util.checkNotNull(throwable, "throwable == null");
+      Util.checkNotNull(retryCount, "retryCount == null");
 
-            String name = isSingle ? "Single" : "Observable";
-            throw new IllegalStateException(name + " return type must be parameterized" + " as " + name + "<Foo> or " +
-                    name +
-                    "<? extends Foo>");
-        }
-
-        if (isCompletable) {
-            return CompletableHelper.createCallAdapter();
-        }
-
-        CallAdapter<Observable<?>> callAdapter = RxJavaCallAdapterFactory.this.getCallAdapter(returnType, retryCount);
-        if (isSingle) {
-            return SingleHelper.makeSingle(callAdapter);
-        } else {
-            return callAdapter;
-        }
+      this.throwable = throwable;
+      this.retryCount = retryCount;
     }
 
-    private CallAdapter<Observable<?>> getCallAdapter(Type returnType, int maxConnect) {
-
-        Type observableType = getParameterUpperBound(0, (ParameterizedType) returnType);
-
-        return new SimpleCallAdapter(observableType, maxConnect);
+    public Throwable getThrowable() {
+      return throwable;
     }
 
-    static final class SimpleCallAdapter implements CallAdapter<Observable<?>> {
-
-        private final Type responseType;
-        private final int maxRetryCount;
-
-        SimpleCallAdapter(Type responseType, int retryCount) {
-            this.responseType = responseType;
-            this.maxRetryCount = retryCount + INITIAL;
-        }
-
-        @Override
-        public Type responseType() {
-            return responseType;
-        }
-
-        @Override
-        public <R> Observable<R> adapt(Call<R> call) {
-
-            return Observable.create(new CallOnSubscribe<>(call))
-                             .lift(OperatorMapResponseToBodyOrError.<R>instance())
-                             .retryWhen(new RetryWhenFunc(maxRetryCount));
-        }
+    public Integer getRetryCount() {
+      return retryCount;
     }
-
-    static final class CallOnSubscribe<T> implements Observable.OnSubscribe<Response<T>> {
-
-        private final Call<T> originalCall;
-
-        CallOnSubscribe(Call<T> originalCall) {
-            this.originalCall = originalCall;
-        }
-
-        @Override
-        public void call(final Subscriber<? super Response<T>> subscriber) {
-            // Since Call is a one-shot type, clone it for each new subscriber.
-            Call<T> call = originalCall.clone();
-
-            // Wrap the call in a helper which handles both unsubscription and backpressure.
-            RequestArbiter<T> requestArbiter = new RequestArbiter<>(call, subscriber);
-            subscriber.add(requestArbiter);
-            subscriber.setProducer(requestArbiter);
-        }
-    }
-
-    static final class RequestArbiter<T> extends AtomicBoolean implements Subscription, Producer {
-
-        private final Call<T> call;
-        private final Subscriber<? super Response<T>> subscriber;
-
-        private final AtomicBoolean unsubscribed = new AtomicBoolean(false);
-
-        RequestArbiter(Call<T> call, Subscriber<? super Response<T>> subscriber) {
-            this.call = call;
-            this.subscriber = subscriber;
-        }
-
-        @Override
-        public void request(long n) {
-            if (n < 0) throw new IllegalArgumentException("n < 0: " + n);
-            if (n == 0) return; // Nothing to do when requesting 0.
-            if (!this.compareAndSet(false, true)) return; // Request was already triggered.
-
-            try {
-                Response<T> response = call.execute();
-                if (!subscriber.isUnsubscribed() && !call.isCanceled()) {
-                    subscriber.onNext(response);
-                    subscriber.onCompleted();
-                }
-            } catch (Throwable t) {
-                Exceptions.throwIfFatal(t);
-                if (!subscriber.isUnsubscribed()) {
-                    subscriber.onError(t);
-                }
-            }
-        }
-
-        @Override
-        public void unsubscribe() {
-            if (this.unsubscribed.compareAndSet(false, true)) {
-                call.cancel();
-            }
-        }
-
-        @Override
-        public boolean isUnsubscribed() {
-            return unsubscribed.get() && call.isCanceled();
-        }
-    }
-
-    static final class RetryWhenFunc implements Func1<Observable<? extends Throwable>, Observable<Long>> {
-
-        private Integer maxRetryCount;
-
-        public RetryWhenFunc(Integer maxRetryCount) {
-            this.maxRetryCount = maxRetryCount;
-        }
-
-        @Override
-        public Observable<Long> call(Observable<? extends Throwable> errorObservable) {
-            return errorObservable.zipWith(Observable.range(INITIAL, maxRetryCount), new Func2<Throwable, Integer, InnerThrowable>() {
-
-                @Override
-                public InnerThrowable call(Throwable throwable, Integer i) {
-
-                    if (throwable instanceof IOException) return new InnerThrowable(throwable, i);
-
-                    return new InnerThrowable(throwable, i);
-                }
-            })
-                                  .concatMap(new Func1<InnerThrowable, Observable<Long>>() {
-                                      @Override
-                                      public Observable<Long> call(InnerThrowable innerThrowable) {
-
-                                          Integer retryCount = innerThrowable.getRetryCount();
-                                          if (maxRetryCount.equals(retryCount)) return Observable.error(innerThrowable.getThrowable());
-
-                                          /*use Schedulers#immediate() to keep on same thread */
-                                          return Observable.timer((long) Math.pow(2, retryCount), TimeUnit.SECONDS, Schedulers.immediate());
-                                      }
-                                  });
-        }
-    }
-
-    private static class InnerThrowable {
-
-        private Throwable throwable;
-        private Integer retryCount;
-
-        public InnerThrowable(Throwable throwable, Integer retryCount) {
-            Util.checkNotNull(throwable, "throwable == null");
-            Util.checkNotNull(retryCount, "retryCount == null");
-
-            this.throwable = throwable;
-            this.retryCount = retryCount;
-        }
-
-        public Throwable getThrowable() {
-            return throwable;
-        }
-
-        public Integer getRetryCount() {
-            return retryCount;
-        }
-    }
+  }
 }

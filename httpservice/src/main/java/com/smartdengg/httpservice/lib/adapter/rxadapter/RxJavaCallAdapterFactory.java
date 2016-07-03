@@ -221,11 +221,8 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     private Integer retryCount;
 
     public InnerThrowable(Throwable throwable, Integer retryCount) {
-      Util.checkNotNull(throwable, "throwable == null");
-      Util.checkNotNull(retryCount, "retryCount == null");
-
-      this.throwable = throwable;
-      this.retryCount = retryCount;
+      this.throwable = Util.checkNotNull(throwable, "throwable == null");
+      this.retryCount =  Util.checkNotNull(retryCount, "retryCount == null");
     }
 
     public Throwable getThrowable() {

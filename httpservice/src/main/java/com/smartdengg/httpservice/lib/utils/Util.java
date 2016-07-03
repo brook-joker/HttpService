@@ -7,22 +7,22 @@ import android.os.Looper;
  */
 public class Util {
 
-    private Util() {
-        throw new IllegalStateException("No instances!");
-    }
+  private Util() {
+    throw new IllegalStateException("No instances!");
+  }
 
-    public static <T> void checkNotNull(T object, String message) {
-        if (object == null) {
-            throw new NullPointerException(message);
-        }
+  public static <T> T checkNotNull(T object, String message) {
+    if (object == null) {
+      throw new NullPointerException(message);
     }
+    return object;
+  }
 
-    static void checkMainThread() {
-        if (Looper.getMainLooper() != Looper.myLooper()) {
-            throw new IllegalStateException(
-                    "Must be called from the main thread. Was: " + Thread.currentThread());
-        }
+  static void checkMainThread() {
+    if (Looper.getMainLooper() != Looper.myLooper()) {
+      throw new IllegalStateException(
+          "Must be called from the main thread. Was: " + Thread.currentThread());
     }
-
+  }
 }
 

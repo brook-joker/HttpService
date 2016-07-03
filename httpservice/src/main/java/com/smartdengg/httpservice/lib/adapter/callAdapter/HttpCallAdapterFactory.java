@@ -72,9 +72,8 @@ public class HttpCallAdapterFactory extends CallAdapter.Factory {
         private Handler mainHandler = new Handler(Looper.getMainLooper());
 
         @Override
-        public void execute(Runnable command) {
-            Util.checkNotNull(command, "command == null");
-            mainHandler.post(command);
+        public void execute(Runnable runnable) {
+            mainHandler.post(Util.checkNotNull(runnable, "runnable == null"));
         }
     }
 }

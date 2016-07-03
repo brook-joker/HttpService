@@ -32,9 +32,8 @@ public class SmartExecutors {
     private static final ThreadFactory eventThreadFactory = new ThreadFactory() {
         private final AtomicInteger mCount = new AtomicInteger(1);
 
-        public Thread newThread(Runnable r) {
-            Util.checkNotNull(r, "Runnable == null");
-            return new SmartThread(r, "EventAsyncOrBackground #" + mCount.getAndIncrement());
+        public Thread newThread(Runnable runnable) {
+            return new SmartThread(Util.checkNotNull(runnable, "Runnable == null"), "EventAsyncOrBackground #" + mCount.getAndIncrement());
         }
     };
 

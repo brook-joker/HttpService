@@ -171,8 +171,7 @@ public class HttpLoggingInterceptor implements Interceptor {
 
     /** Change the level at which this interceptor logs. */
     public HttpLoggingInterceptor setLevel(Level level) {
-        Util.checkNotNull(level, "level == null. Use Level.NONE instead.");
-        this.level = level;
+        this.level = Util.checkNotNull(level, "level == null. Use Level.NONE instead.");
         return this;
     }
 

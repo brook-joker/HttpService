@@ -94,9 +94,9 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     }
   }
 
-  private CallAdapter<Observable<?>> getCallAdapter(Type returnType, int maxConnect) {
+  private CallAdapter<Observable<?>> getCallAdapter(Type returnType, int retryCount) {
     Type observableType = getParameterUpperBound(0, (ParameterizedType) returnType);
-    return new SimpleCallAdapter(observableType, maxConnect);
+    return new SimpleCallAdapter(observableType, retryCount);
   }
 
   static final class SimpleCallAdapter implements CallAdapter<Observable<?>> {
@@ -106,7 +106,7 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
 
     SimpleCallAdapter(Type responseType, int retryCount) {
       this.responseType = responseType;
-      this.retryCount = ++retryCount;
+      this.retryCount = retryCount;
     }
 
     @Override public Type responseType() {
@@ -185,14 +185,14 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
   static final class RetryWhenFunc
       implements Func1<Observable<? extends Throwable>, Observable<Long>> {
 
-    private Integer maxRetryCount;
+    private Integer maxConnectCount = 1;
 
-    public RetryWhenFunc(Integer maxRetryCount) {
-      this.maxRetryCount = maxRetryCount;
+    public RetryWhenFunc(Integer maxConnectCount) {
+      this.maxConnectCount += maxConnectCount;
     }
 
     @Override public Observable<Long> call(Observable<? extends Throwable> errorObservable) {
-      return errorObservable.zipWith(Observable.range(INITIAL, maxRetryCount),
+      return errorObservable.zipWith(Observable.range(INITIAL, maxConnectCount),
           new Func2<Throwable, Integer, InnerThrowable>() {
 
             @Override public InnerThrowable call(Throwable throwable, Integer i) {
@@ -202,13 +202,13 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
           }).concatMap(new Func1<InnerThrowable, Observable<Long>>() {
         @Override public Observable<Long> call(InnerThrowable innerThrowable) {
 
-          Integer retryCount = innerThrowable.getRetryCount();
-          if (maxRetryCount.equals(retryCount)) {
+          Integer currentCount = innerThrowable.getRetryCount();
+          if (RetryWhenFunc.this.maxConnectCount.equals(currentCount)) {
             return Observable.error(innerThrowable.getThrowable());
           }
 
           /*use Schedulers#immediate() to keep on same thread */
-          return Observable.timer((long) Math.pow(2, retryCount), TimeUnit.SECONDS,
+          return Observable.timer((long) Math.pow(2, currentCount), TimeUnit.SECONDS,
               Schedulers.immediate());
         }
       });
@@ -222,7 +222,7 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
 
     public InnerThrowable(Throwable throwable, Integer retryCount) {
       this.throwable = Util.checkNotNull(throwable, "throwable == null");
-      this.retryCount =  Util.checkNotNull(retryCount, "retryCount == null");
+      this.retryCount = Util.checkNotNull(retryCount, "maxConnectCount == null");
     }
 
     public Throwable getThrowable() {

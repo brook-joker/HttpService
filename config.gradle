@@ -34,7 +34,6 @@ ext {
 
       /*Google Library*/
       libDesign            : "com.android.support:design:${SUPPORT_LIBRARY_VERSION}",
-      libRecyclerView      : "com.android.support:recyclerview-v7:${SUPPORT_LIBRARY_VERSION}",
       libGson              : "com.google.code.gson:gson:${GSON_LIBRARY_VERSION}",
       libSupport_V4        : "com.android.support:support-v4:${SUPPORT_LIBRARY_VERSION}",
       libCardview          : "com.android.support:cardview-v7:${SUPPORT_LIBRARY_VERSION}",

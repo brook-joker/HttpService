@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 
-group = 'com.github.smartdengg'
+group = 'com.github.SmartDengg'
 
 def STRING = "String"
 def LIBRARY_VERSION = "LIBRARY_VERSION"

@@ -17,7 +17,7 @@ def IM_LIBRARY_VERSION = "1.0.5.3-SNAPSHOT@aar"
 
 ext {
 
-  VERSION_NAME = "0.1.2"
+  VERSION_NAME = "0.1.3"
   variantRelease = false
   httpLogTAG = "HTTP"
 
@@ -26,8 +26,8 @@ ext {
              applicationId        : "com.smartdengg.httpservice.example",
              minSdkVersion        : 14,
              targetSdkVersion     : 23,
-             versionCode          : 12,
-             versionName          : "0.1.2",
+             versionCode          : 13,
+             versionName          : "0.1.3",
              renderscriptTargetApi: 19,]
 
   dependencies = [

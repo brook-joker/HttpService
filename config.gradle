@@ -17,7 +17,7 @@ def IM_LIBRARY_VERSION = "1.0.5.3-SNAPSHOT@aar"
 
 ext {
 
-  VERSION_NAME = "1.0.0"
+  VERSION_NAME = "0.1.2"
   variantRelease = false
   httpLogTAG = "HTTP"
 

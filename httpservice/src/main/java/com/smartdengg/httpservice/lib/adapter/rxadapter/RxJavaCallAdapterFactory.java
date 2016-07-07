@@ -187,8 +187,8 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
 
     private Integer maxConnectCount = 1;
 
-    public RetryWhenFunc(Integer maxConnectCount) {
-      this.maxConnectCount += maxConnectCount;
+    public RetryWhenFunc(Integer retryCount) {
+      this.maxConnectCount += retryCount;
     }
 
     @Override public Observable<Long> call(Observable<? extends Throwable> errorObservable) {

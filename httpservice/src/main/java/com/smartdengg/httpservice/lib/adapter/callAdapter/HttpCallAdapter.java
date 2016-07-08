@@ -23,14 +23,14 @@ public class HttpCallAdapter<T> implements HttpCall<T> {
 
   private Call<T> delegate;
   private HttpCallAdapterFactory.MainThreadExecutor callbackExecutor;
-  private int retryCount;
-  private int currentRetry = 0;
+  private int maxRetryCount;
+  private int currentRetryCount = 0;
 
   public HttpCallAdapter(Call<T> delegate,
-      HttpCallAdapterFactory.MainThreadExecutor mainThreadExecutor, int retryCount) {
+      HttpCallAdapterFactory.MainThreadExecutor mainThreadExecutor, int maxRetryCount) {
     this.delegate = delegate;
     this.callbackExecutor = mainThreadExecutor;
-    this.retryCount = retryCount;
+    this.maxRetryCount = maxRetryCount;
   }
 
   @Override public Response<T> execute() throws IOException {
@@ -68,7 +68,7 @@ public class HttpCallAdapter<T> implements HttpCall<T> {
 
       @Override public void onFailure(final Call<T> call, final Throwable throwable) {
 
-        if (currentRetry++ < retryCount) {
+        if (currentRetryCount++ < maxRetryCount) {
           call.clone().enqueue(this);
         } else {
           callbackExecutor.execute(new Runnable() {
@@ -97,8 +97,8 @@ public class HttpCallAdapter<T> implements HttpCall<T> {
     return delegate.isCanceled();
   }
 
-  @Override public Call<T> clone() {
-    return delegate.clone();
+  @Override public HttpCall<T> clone() {
+    return new HttpCallAdapter<>(delegate.clone(), callbackExecutor, maxRetryCount);
   }
 
   @Override public Request request() {

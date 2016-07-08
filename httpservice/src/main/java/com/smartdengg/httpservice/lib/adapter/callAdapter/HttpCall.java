@@ -2,7 +2,6 @@ package com.smartdengg.httpservice.lib.adapter.callAdapter;
 
 import java.io.IOException;
 import okhttp3.Request;
-import retrofit2.Call;
 import retrofit2.Response;
 
 /**
@@ -10,17 +9,17 @@ import retrofit2.Response;
  */
 public interface HttpCall<T> extends Cloneable {
 
-    Response<T> execute() throws IOException;
+  Response<T> execute() throws IOException;
 
-    void enqueue(HttpCallback<T> callback);
+  void enqueue(HttpCallback<T> callback);
 
-    void cancel();
+  void cancel();
 
-    boolean isExecuted();
+  boolean isExecuted();
 
-    boolean isCanceled();
+  boolean isCanceled();
 
-    Call<T> clone();
+  HttpCall<T> clone();
 
-    Request request();
+  Request request();
 }

@@ -4,7 +4,7 @@
 [![TeamCity CodeBetter](https://img.shields.io/teamcity/codebetter/bt428.svg?maxAge=2592000)]()
 
 [![Method count](https://img.shields.io/badge/Method count  - 420-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
-[![Size](https://img.shields.io/badge/Size  - 52 KB-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
+[![Size](https://img.shields.io/badge/Size  - 53 KB-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
 
 [![GitHub stars](https://img.shields.io/github/stars/SmartDengg/HttpService.svg?style=social&label=Star&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/HttpService/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/SmartDengg/HttpService.svg?style=social&label=Fork&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/HttpService/network)
@@ -35,7 +35,7 @@ allprojects {
 - 其次，在你的module的`Gradle`中添加类库地址
 ```groovy
 dependencies {
-	compile 'com.github.SmartDengg:HttpService:0.1.3'
+	compile 'com.github.SmartDengg:HttpService:0.2.5'
 }
 ```
 

@@ -26,8 +26,8 @@ public class HttpCallAdapter<T> implements HttpCall<T> {
   private int maxRetryCount;
   private int currentRetryCount = 0;
 
-  public HttpCallAdapter(Call<T> delegate,
-      HttpCallAdapterFactory.MainThreadExecutor mainThreadExecutor, int maxRetryCount) {
+  HttpCallAdapter(Call<T> delegate, HttpCallAdapterFactory.MainThreadExecutor mainThreadExecutor,
+      int maxRetryCount) {
     this.delegate = delegate;
     this.callbackExecutor = mainThreadExecutor;
     this.maxRetryCount = maxRetryCount;
@@ -97,8 +97,9 @@ public class HttpCallAdapter<T> implements HttpCall<T> {
     return delegate.isCanceled();
   }
 
+  @SuppressWarnings("CloneDoesntCallSuperClone")
   @Override public HttpCall<T> clone() {
-    return new HttpCallAdapter<>(delegate.clone(), callbackExecutor, maxRetryCount);
+    return new HttpCallAdapter<>(delegate.clone(), this.callbackExecutor, this.maxRetryCount);
   }
 
   @Override public Request request() {

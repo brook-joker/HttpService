@@ -56,9 +56,7 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     int retryCount = 0;
 
     for (Annotation annotation : annotations) {
-      if (!RetryCount.class.isAssignableFrom(annotation.getClass())) {
-        continue;
-      }
+      if (!RetryCount.class.isAssignableFrom(annotation.getClass())) continue;
       retryCount = ((RetryCount) annotation).count();
       if (retryCount < 0) throw new IllegalArgumentException("@RetryCount must not be less than 0");
     }
@@ -68,22 +66,21 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     boolean isSingle = "rx.Single".equals(rawType.getCanonicalName());
     boolean isCompletable = "rx.Completable".equals(rawType.getCanonicalName());
 
-    if (!isObservable && !isSingle && !isCompletable) {
-      return null;
-    }
+    if (!isObservable && !isSingle && !isCompletable) return null;
 
     if (!isCompletable && !(returnType instanceof ParameterizedType)) {
 
       String name = isSingle ? "Single" : "Observable";
-      throw new IllegalStateException(
-          name + " return type must be parameterized" + " as " + name + "<Foo> or " +
-              name +
-              "<? extends Foo>");
+      throw new IllegalStateException(name
+          + " return type must be parameterized"
+          + " as "
+          + name
+          + "<Foo> or "
+          + name
+          + "<? extends Foo>");
     }
 
-    if (isCompletable) {
-      return CompletableHelper.createCallAdapter();
-    }
+    if (isCompletable) return CompletableHelper.createCallAdapter();
 
     CallAdapter<Observable<?>> callAdapter =
         RxJavaCallAdapterFactory.this.getCallAdapter(returnType, retryCount);

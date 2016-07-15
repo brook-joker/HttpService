@@ -4,6 +4,8 @@ import retrofit2.Response;
 
 /** Exception for an unexpected, non-2xx HTTP response. */
 public final class HttpException extends Exception {
+  private static final long serialVersionUID = 6421596800120385751L;
+
   private final int code;
   private final String message;
   private final transient Response<?> response;

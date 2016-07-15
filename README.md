@@ -3,7 +3,7 @@
 [![](https://jitpack.io/v/SmartDengg/HttpService.svg)](https://jitpack.io/#SmartDengg/HttpService)
 [![TeamCity CodeBetter](https://img.shields.io/teamcity/codebetter/bt428.svg?maxAge=2592000)]()
 
-[![Method count](https://img.shields.io/badge/Method count  - 420-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
+[![Method count](https://img.shields.io/badge/Method count  - 428-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
 [![Size](https://img.shields.io/badge/Size  - 53 KB-ff69b4.svg?style=flat)](http://www.methodscount.com/?lib=com.github.SmartDengg%3AHttpService%3A0.1.0)
 
 [![GitHub stars](https://img.shields.io/github/stars/SmartDengg/HttpService.svg?style=social&label=Star&maxAge=2592000?style=plastic)](https://github.com/SmartDengg/HttpService/stargazers)
@@ -35,7 +35,7 @@ allprojects {
 - 其次，在你的module的`Gradle`中添加类库地址
 ```groovy
 dependencies {
-	compile 'com.github.SmartDengg:HttpService:0.2.5'
+	compile 'com.github.SmartDengg:HttpService:0.2.6'
 }
 ```
 
@@ -152,6 +152,92 @@ private void uploadFile(String filePath) {
 }
 
 ```
+
+*0.2.5*版本之后可以使用新的工具类`PartGenerator`来帮你简化**上传多个文件**时所需参数:
+
+```java
+    // 创建持有uploadId的RequestBody实例
+    RequestBody uploadIdBody = PartGenerator.createPartFromString("206101");
+    //创建持有file的MultipartBody.Part实例，用来上传真实的文件
+    File file= new File(filePath);
+    RequestBody fileBody = PartGenerator.createPartFromFile(MediaType.parse("image/*"),file.getName(), fileBody);
+```
+
+下面示例演示如何在一个接口中上传多个文件,以及如何使用**@PartMap()**注解添加多个`RequestBody`:
+
+首先定义请求接口函数:
+```java
+public interface FileUploadService {  
+
+    @Multipart
+    @POST("user/upload")
+    Call<ResponseBody> uploadMultipleFiles(
+            @Part("description") RequestBody description,
+            @Part MultipartBody.Part file1,
+            @Part MultipartBody.Part file2);
+                
+    @Multipart
+    @POST("user/upload")
+    Call<ResponseBody> uploadFileWithPartMap(
+            @PartMap() Map<String, RequestBody> partMap,
+            @Part MultipartBody.Part file);
+}
+```
+
+逻辑代码如下:
+```java
+public void multipleFilesSample(){
+
+    File videoFile= new File(videoFileUri);
+    File thumbFile= new File(thumbFileUri);
+    
+    FileUploadService service =  
+            ServiceGenerator.createService(FileUploadService.class);
+    
+    /*注意:请和服务端确认你的MediaType,默认情况下MediaType为"multipart/form-data"*/
+    MultipartBody.Part videoBody = PartGenerator.createPartFromFile("video", videoFile);  
+    MultipartBody.Part thumbBody = PartGenerator.createPartFromFile("thumb", thumbFile);
+    
+    RequestBody description = PartGenerator.createPartFromString("This's a description");
+    
+    Call<ResponseBody> httpCall = service.uploadMultipleFiles(description, videoBody, thumbBody);  
+    httpCall.enqueue(new HttpCallbackAdapter<ResponseBody>() {
+                @Override
+                public void success(ResponseBody responseBody) {
+                   System.out.println("success");
+                }
+            });
+    }
+    
+public void fileWithPartMapSample(){
+
+    File photoFile= new File(photoFileUri);
+    
+    FileUploadService service =  
+            ServiceGenerator.createService(FileUploadService.class);
+    
+    /*注意:请和服务端确认你的MediaType,默认情况下MediaType为"multipart/form-data"*/
+    MultipartBody.Part photoBody = PartGenerator.createPartFromFile("photo", photoFile);  
+    
+    RequestBody description = PartGenerator.createPartFromString("My profile");
+    RequestBody user = PartGenerator.createPartFromString("SmartDengg");  
+    RequestBody time = PartGenerator.createPartFromString("20160707");
+    
+    HashMap<String, RequestBody> partmMap = new HashMap<>();  
+    partmMap.put("description", description);  
+    partmMap.put("userName", userName);  
+    partmMap.put("time", time);
+    
+    Call<ResponseBody> httpCall = service.uploadFileWithPartMap(partmMap, photoBody);  
+    httpCall.enqueue(new HttpCallbackAdapter<ResponseBody>() {
+                @Override
+                public void success(ResponseBody responseBody) {
+                   System.out.println("success");
+                }
+            });
+    }
+```
+
 关于`ServiceGenerator`我会在后面提到。
 
 ### 灵活运用注解

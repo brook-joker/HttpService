@@ -620,7 +620,7 @@ HttpLoggingInterceptor loggingInterceptor = HttpLoggingInterceptor.createLogging
                                                                   .setLevel(HttpLoggingInterceptor.Level.BODY);
 ```
 
-## 开发者列表
+## 开发者
 
 - 邓伟 - Hi4Joker@gmail.com
 - [小鄧子的简书](http://www.jianshu.com/users/df40282480b4/latest_articles)

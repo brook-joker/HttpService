@@ -652,6 +652,6 @@ License
 	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 	SOFTWARE.
 	
-[▲ 返回顶部](#top)
+[▲ 回到顶部](#top)
 
 

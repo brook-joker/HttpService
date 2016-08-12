@@ -20,73 +20,71 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.smartdengg.httpservice.lib.HttpService;
 import com.smartdengg.httpservice.lib.utils.JsonPrinter;
+import com.smartdengg.httpservice.lib.utils.Util;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import okhttp3.MediaType;
 import okhttp3.ResponseBody;
-import okhttp3.internal.Util;
 import okio.Buffer;
 import okio.BufferedSource;
 import okio.Okio;
 import retrofit2.Converter;
 
-@SuppressWarnings("all")
-final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
+@SuppressWarnings("all") final class GsonResponseBodyConverter<gitT>
+    implements Converter<ResponseBody, T> {
 
-    private Gson gson;
-    private final TypeAdapter<T> adapter;
-    private final boolean enable;
+  private Gson gson;
+  private final TypeAdapter<T> adapter;
+  private final boolean enable;
 
-    private static final Charset UTF8 = Charset.forName("UTF-8");
+  private static final Charset UTF8 = Charset.forName("UTF-8");
 
-    GsonResponseBodyConverter(Gson gson, TypeAdapter adapter, boolean enable) {
-        this.gson = gson;
-        this.adapter = adapter;
-        this.enable = enable;
-    }
+  GsonResponseBodyConverter(Gson gson, TypeAdapter adapter, boolean enable) {
+    this.gson = gson;
+    this.adapter = adapter;
+    this.enable = enable;
+  }
 
-    @Override
-    public T convert(ResponseBody value) throws IOException {
+  @Override public T convert(ResponseBody value) throws IOException {
 
-        BufferedSource source = null;
-        InputStreamReader reader = null;
-        JsonReader jsonReader = null;
+    BufferedSource source = null;
+    InputStreamReader reader = null;
+    JsonReader jsonReader = null;
 
-        try {
-            if (HttpService.enableResponseLog() && enable) {
-                source = value.source();
-                source.request(Long.MAX_VALUE);
-                Buffer buffer = source.buffer();
+    try {
+      if (HttpService.enableResponseLog() && enable) {
+        source = value.source();
+        source.request(Long.MAX_VALUE);
+        Buffer buffer = source.buffer();
 
-                Charset charset = UTF8;
-                MediaType contentType = value.contentType();
-                if (contentType != null) {
-                    charset = contentType.charset(UTF8);
-                }
-
-                if (value.contentLength() != 0) {
-                    JsonPrinter.json(buffer.clone().readString(charset));
-                }
-                reader = new InputStreamReader(Okio.buffer(source)
-                                                   .inputStream(), charset);
-                return getT(reader);
-            } else {
-                jsonReader = gson.newJsonReader(value.charStream());
-                jsonReader.setLenient(true);
-                return adapter.read(jsonReader);
-            }
-        } finally {
-            Util.closeQuietly(source);
-            Util.closeQuietly(reader);
-            Util.closeQuietly(jsonReader);
-            Util.closeQuietly(value);
+        Charset charset = UTF8;
+        MediaType contentType = value.contentType();
+        if (contentType != null) {
+          charset = contentType.charset(UTF8);
         }
-    }
 
-    private T getT(InputStreamReader reader) throws IOException {
-        JsonReader jsonReader = gson.newJsonReader(reader);
+        if (value.contentLength() != 0 && Util.isPlaintext(buffer)) {
+          JsonPrinter.json(buffer.clone().readString(charset));
+        }
+        reader = new InputStreamReader(Okio.buffer(source).inputStream(), charset);
+        return getT(reader);
+      } else {
+        jsonReader = gson.newJsonReader(value.charStream());
         jsonReader.setLenient(true);
         return adapter.read(jsonReader);
+      }
+    } finally {
+      Util.closeQuietly(source);
+      Util.closeQuietly(reader);
+      Util.closeQuietly(jsonReader);
+      Util.closeQuietly(value);
     }
+  }
+
+  private T getT(InputStreamReader reader) throws IOException {
+    JsonReader jsonReader = gson.newJsonReader(reader);
+    jsonReader.setLenient(true);
+    return adapter.read(jsonReader);
+  }
 }

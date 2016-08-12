@@ -304,8 +304,11 @@ public class HttpLoggingInterceptor implements Interceptor {
         source.request(Long.MAX_VALUE); // Buffer the entire body.
         Buffer buffer = source.buffer();
 
-        logger.log("<-- END HTTP (" + buffer.size() + "-byte body)");
-      }
+        if (Util.isPlaintext(buffer)) {
+          logger.log("<-- END HTTP (" + buffer.size() + "-byte body)");
+        } else {
+          logger.log("<-- END HTTP (" + buffer.size() + "-byte body omitted)");
+        }      }
     }
 
     /**Outputs Middle_Border*/

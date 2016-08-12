@@ -31,8 +31,6 @@ public class HttpCallAdapterFactory extends CallAdapter.Factory {
   @Override public CallAdapter<HttpCall<?>> get(Type returnType, Annotation[] annotations,
       Retrofit retrofit) {
 
-    final int[] retryCount = new int[1];
-
     if (Types.getRawType(returnType) != HttpCall.class) return null;
 
     if (!(returnType instanceof ParameterizedType)) {
@@ -41,6 +39,7 @@ public class HttpCallAdapterFactory extends CallAdapter.Factory {
           "HttpCall must have generic type (e.g., HttpCall<ResponseBody>)");
     }
 
+    final int[] retryCount = new int[1];
     for (Annotation annotation : annotations) {
       if (!RetryCount.class.isAssignableFrom(annotation.getClass())) continue;
       retryCount[0] = ((RetryCount) annotation).count();
@@ -49,7 +48,7 @@ public class HttpCallAdapterFactory extends CallAdapter.Factory {
       }
     }
 
-    final Type responseType = Types.getParameterUpperBound(0, (ParameterizedType) returnType);
+    final Type responseType = getParameterUpperBound(0, (ParameterizedType) returnType);
 
     return new CallAdapter<HttpCall<?>>() {
       @Override public Type responseType() {

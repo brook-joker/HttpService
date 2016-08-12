@@ -53,14 +53,6 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
   @Override
   public CallAdapter<?> get(Type returnType, Annotation[] annotations, Retrofit retrofit) {
 
-    int retryCount = 0;
-
-    for (Annotation annotation : annotations) {
-      if (!RetryCount.class.isAssignableFrom(annotation.getClass())) continue;
-      retryCount = ((RetryCount) annotation).count();
-      if (retryCount < 0) throw new IllegalArgumentException("@RetryCount must not be less than 0");
-    }
-
     Class<?> rawType = getRawType(returnType);
     boolean isObservable = "rx.Observable".equals(rawType.getCanonicalName());
     boolean isSingle = "rx.Single".equals(rawType.getCanonicalName());
@@ -69,7 +61,6 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     if (!isObservable && !isSingle && !isCompletable) return null;
 
     if (!isCompletable && !(returnType instanceof ParameterizedType)) {
-
       String name = isSingle ? "Single" : "Observable";
       throw new IllegalStateException(name
           + " return type must be parameterized"
@@ -81,6 +72,16 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     }
 
     if (isCompletable) return CompletableHelper.createCallAdapter();
+
+    int retryCount = 0;
+    for (Annotation annotation : annotations) {
+      if (!RetryCount.class.isAssignableFrom(annotation.getClass())) continue;
+      retryCount = ((RetryCount) annotation).count();
+      if (retryCount < 0) {
+        throw new IllegalArgumentException(
+            "The value which in '@RetryCount' cannot be less than 0");
+      }
+    }
 
     CallAdapter<Observable<?>> callAdapter =
         RxJavaCallAdapterFactory.this.getCallAdapter(returnType, retryCount);
@@ -139,6 +140,7 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
 
   static final class RequestArbiter<T> extends AtomicBoolean implements Subscription, Producer {
 
+    private static final long serialVersionUID = -62182361871908933L;
     private final Call<T> call;
     private final Subscriber<? super Response<T>> subscriber;
 
@@ -199,7 +201,7 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
           }).concatMap(new Func1<InnerThrowable, Observable<Long>>() {
         @Override public Observable<Long> call(InnerThrowable innerThrowable) {
 
-          Integer currentCount = innerThrowable.getRetryCount();
+          Integer currentCount = innerThrowable.getCurrentRetryCount();
           if (RetryWhenFunc.this.maxConnectCount.equals(currentCount)) {
             return Observable.error(innerThrowable.getThrowable());
           }
@@ -215,19 +217,19 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
   private static class InnerThrowable {
 
     private Throwable throwable;
-    private Integer retryCount;
+    private Integer currentRetryCount;
 
-    public InnerThrowable(Throwable throwable, Integer retryCount) {
+    public InnerThrowable(Throwable throwable, Integer currentRetryCount) {
       this.throwable = Util.checkNotNull(throwable, "throwable == null");
-      this.retryCount = Util.checkNotNull(retryCount, "maxConnectCount == null");
+      this.currentRetryCount = Util.checkNotNull(currentRetryCount, "currentRetryCount == null");
     }
 
     public Throwable getThrowable() {
       return throwable;
     }
 
-    public Integer getRetryCount() {
-      return retryCount;
+    public Integer getCurrentRetryCount() {
+      return currentRetryCount;
     }
   }
 }

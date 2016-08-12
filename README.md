@@ -160,7 +160,7 @@ private void uploadFile(String filePath) {
     RequestBody uploadIdBody = PartGenerator.createPartFromString("206101");
     //创建持有file的MultipartBody.Part实例，用来上传真实的文件
     File file= new File(filePath);
-    RequestBody fileBody = PartGenerator.createPartFromFile(MediaType.parse("image/*"),file.getName(), fileBody);
+    MultipartBody.Part fileBody = PartGenerator.createPartFromFile(MediaType.parse("image/*"),file.getName(), file);
 ```
 
 下面示例演示如何在一个接口中上传多个文件,以及如何使用**@PartMap()**注解添加多个`RequestBody`:
@@ -620,7 +620,7 @@ HttpLoggingInterceptor loggingInterceptor = HttpLoggingInterceptor.createLogging
                                                                   .setLevel(HttpLoggingInterceptor.Level.BODY);
 ```
 
-## 开发者列表
+## 开发者
 
 - 邓伟 - Hi4Joker@gmail.com
 - [小鄧子的简书](http://www.jianshu.com/users/df40282480b4/latest_articles)
@@ -651,4 +651,7 @@ License
 	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 	SOFTWARE.
+	
+[▲ 回到顶部](#top)
+
 

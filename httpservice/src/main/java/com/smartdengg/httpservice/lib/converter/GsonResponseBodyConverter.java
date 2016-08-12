@@ -31,7 +31,7 @@ import okio.BufferedSource;
 import okio.Okio;
 import retrofit2.Converter;
 
-@SuppressWarnings("all") final class GsonResponseBodyConverter<gitT>
+@SuppressWarnings("all") final class GsonResponseBodyConverter<T>
     implements Converter<ResponseBody, T> {
 
   private Gson gson;

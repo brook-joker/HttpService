@@ -40,7 +40,6 @@ public class Types {
       return Object.class;
     }
     if (type instanceof WildcardType) {
-
       return getRawType(((WildcardType) type).getUpperBounds()[0]);
     }
 

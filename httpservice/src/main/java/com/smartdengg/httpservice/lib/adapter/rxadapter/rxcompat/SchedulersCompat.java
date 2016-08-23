@@ -45,7 +45,7 @@ public class SchedulersCompat {
     private static final Observable.Transformer executorTransformer = new Observable.Transformer() {
         @Override
         public Object call(Object observable) {
-            return ((Observable) observable).subscribeOn(Schedulers.from(SmartExecutors.eventExecutor))
+            return ((Observable) observable).subscribeOn(Schedulers.from(HttpExecutors.eventExecutor))
                                             .observeOn(AndroidSchedulers.mainThread());
         }
     };

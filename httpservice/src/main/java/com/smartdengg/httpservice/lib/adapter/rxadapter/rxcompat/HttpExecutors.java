@@ -30,7 +30,7 @@ public class HttpExecutors {
     private final AtomicInteger mCount = new AtomicInteger(1);
 
     public Thread newThread(Runnable runnable) {
-      TaskThread thread = new TaskThread(Util.checkNotNull(runnable, "Runnable == null"),
+      ThreadWrapper thread = new ThreadWrapper(Util.checkNotNull(runnable, "Runnable == null"),
           "TaskThread #" + mCount.getAndIncrement());
       thread.setDaemon(false);
       return thread;
@@ -82,10 +82,10 @@ public class HttpExecutors {
     }
   };
 
-  private static class TaskThread extends Thread {
+  private static class ThreadWrapper extends Thread {
     private static final int mPriority = Process.THREAD_PRIORITY_BACKGROUND;
 
-    public TaskThread(Runnable runnable, String threadName) {
+    public ThreadWrapper(Runnable runnable, String threadName) {
       super(runnable, threadName);
     }
 

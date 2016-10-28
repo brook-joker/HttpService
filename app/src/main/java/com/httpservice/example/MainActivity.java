@@ -3,6 +3,7 @@ package com.httpservice.example;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import com.smartdengg.httpservice.lib.adapter.rxadapter.rxcompat.SchedulersCompat;
 import com.smartdengg.httpservice.lib.annotation.LogResult;
 import com.smartdengg.httpservice.lib.annotation.RetryCount;
 import okhttp3.ResponseBody;
@@ -23,6 +24,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
   @Override public void onClick(View v) {
     ServiceGenerator.createService(InternalService.class)
         .getCityList("test")
+        .compose(SchedulersCompat.<ResponseBody>applyExecutorSchedulers())
         .subscribe(new Subscriber<ResponseBody>() {
           @Override public void onCompleted() {
             System.out.println("MainActivity.onCompleted");

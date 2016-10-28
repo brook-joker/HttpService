@@ -1,6 +1,5 @@
 package com.smartdengg.httpservice.lib.adapter.rxadapter;
 
-import com.smartdengg.httpservice.lib.adapter.callAdapter.HttpCallAdapter;
 import com.smartdengg.httpservice.lib.errors.HttpException;
 import retrofit2.Response;
 import rx.Observable;
@@ -15,6 +14,9 @@ import rx.plugins.RxJavaHooks;
  * to use {@link Observable#flatMap(Func1)} which breaks producer requests from propagating.
  */
 final class OperatorMapResponseToBodyOrError<T> implements Operator<T, Response<T>> {
+  private static int CODE_204 = 204;
+  private static int CODE_205 = 205;
+
   private static final OperatorMapResponseToBodyOrError<Object> INSTANCE =
       new OperatorMapResponseToBodyOrError<>();
 
@@ -29,12 +31,12 @@ final class OperatorMapResponseToBodyOrError<T> implements Operator<T, Response<
     return parent;
   }
 
-  static final class MapResponseSubscriber<T> extends Subscriber<Response<T>> {
+  private static final class MapResponseSubscriber<T> extends Subscriber<Response<T>> {
 
     private Subscriber<? super T> actual;
     private boolean done;
 
-    public MapResponseSubscriber(Subscriber<? super T> actual) {
+    MapResponseSubscriber(Subscriber<? super T> actual) {
       this.actual = actual;
     }
 
@@ -61,9 +63,7 @@ final class OperatorMapResponseToBodyOrError<T> implements Operator<T, Response<
 
       Integer code = response.code();
 
-      if (response.isSuccessful()
-          && code != HttpCallAdapter.CODE_204
-          && code != HttpCallAdapter.CODE_205) {
+      if (response.isSuccessful() && code != CODE_204 && code != CODE_205) {
         actual.onNext(response.body());
       } else {
         actual.onError(new HttpException(response));

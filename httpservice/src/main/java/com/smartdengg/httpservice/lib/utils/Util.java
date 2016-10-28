@@ -1,12 +1,13 @@
 package com.smartdengg.httpservice.lib.utils;
 
-import android.os.Looper;
 import java.io.Closeable;
 import java.io.EOFException;
 import okio.Buffer;
 
 /**
- * Created by Joker on 2016/6/2.
+ * 创建时间: 2016/08/09 15:14 <br>
+ * 作者: dengwei <br>
+ * 描述: 工具类
  */
 public class Util {
 
@@ -15,17 +16,8 @@ public class Util {
   }
 
   public static <T> T checkNotNull(T object, String message) {
-    if (object == null) {
-      throw new NullPointerException(message);
-    }
+    if (object == null) throw new NullPointerException(message);
     return object;
-  }
-
-  static void checkMainThread() {
-    if (Looper.getMainLooper() != Looper.myLooper()) {
-      throw new IllegalStateException(
-          "Must be called from the main thread. Was: " + Thread.currentThread());
-    }
   }
 
   public static void closeQuietly(Closeable closeable) {

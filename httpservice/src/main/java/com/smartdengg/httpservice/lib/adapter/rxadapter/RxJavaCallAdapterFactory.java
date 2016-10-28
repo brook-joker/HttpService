@@ -1,18 +1,3 @@
-/*
- * Copyright (C) 2015 Lianjia, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.smartdengg.httpservice.lib.adapter.rxadapter;
 
 import com.smartdengg.httpservice.lib.annotation.RetryCount;
@@ -36,9 +21,6 @@ import rx.functions.Func1;
 import rx.functions.Func2;
 import rx.schedulers.Schedulers;
 
-/**
- * fixed by SmartDengg
- */
 public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
 
   private static final int INITIAL = 1;
@@ -97,7 +79,7 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     return new SimpleCallAdapter(observableType, retryCount);
   }
 
-  static final class SimpleCallAdapter implements CallAdapter<Observable<?>> {
+  private static final class SimpleCallAdapter implements CallAdapter<Observable<?>> {
 
     private final Type responseType;
     private final int retryCount;
@@ -119,7 +101,7 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     }
   }
 
-  static final class CallOnSubscribe<T> implements Observable.OnSubscribe<Response<T>> {
+  private static final class CallOnSubscribe<T> implements Observable.OnSubscribe<Response<T>> {
 
     private final Call<T> originalCall;
 
@@ -138,7 +120,8 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     }
   }
 
-  static final class RequestArbiter<T> extends AtomicBoolean implements Subscription, Producer {
+  private static final class RequestArbiter<T> extends AtomicBoolean
+      implements Subscription, Producer {
 
     private static final long serialVersionUID = -62182361871908933L;
     private final Call<T> call;
@@ -181,12 +164,12 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     }
   }
 
-  static final class RetryWhenFunc
+  private static final class RetryWhenFunc
       implements Func1<Observable<? extends Throwable>, Observable<Long>> {
 
     private Integer maxConnectCount = 1;
 
-    public RetryWhenFunc(Integer retryCount) {
+    RetryWhenFunc(Integer retryCount) {
       this.maxConnectCount += retryCount;
     }
 
@@ -219,16 +202,16 @@ public final class RxJavaCallAdapterFactory extends CallAdapter.Factory {
     private Throwable throwable;
     private Integer currentRetryCount;
 
-    public InnerThrowable(Throwable throwable, Integer currentRetryCount) {
+    InnerThrowable(Throwable throwable, Integer currentRetryCount) {
       this.throwable = Util.checkNotNull(throwable, "throwable == null");
       this.currentRetryCount = Util.checkNotNull(currentRetryCount, "currentRetryCount == null");
     }
 
-    public Throwable getThrowable() {
+    Throwable getThrowable() {
       return throwable;
     }
 
-    public Integer getCurrentRetryCount() {
+    Integer getCurrentRetryCount() {
       return currentRetryCount;
     }
   }

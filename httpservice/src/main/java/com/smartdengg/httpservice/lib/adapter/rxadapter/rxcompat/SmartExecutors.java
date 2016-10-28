@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
@@ -17,81 +18,97 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
 
 /**
- * Created by Joker on 2015/8/24.
+ * 创建时间: 2016/08/09 18:36 <br>
+ * 作者: dengwei <br>
+ * 描述: 用于网络连接的自定义线程池
  */
 public class SmartExecutors {
 
-    public static final int DEVICE_INFO_UNKNOWN = 0;
-    public static ExecutorService eventExecutor;
-    private static final int CPU_COUNT = SmartExecutors.getCountOfCPU();
-    private static final int CORE_POOL_SIZE = CPU_COUNT + 1;
-    private static final int MAXIMUM_POOL_SIZE = CPU_COUNT * 2 + 1;
-    private static final int KEEP_ALIVE = 1;
-    private static final BlockingQueue<Runnable> eventPoolWaitQueue =
-            new PriorityBlockingQueue<>(128);
-    private static final ThreadFactory eventThreadFactory = new ThreadFactory() {
-        private final AtomicInteger mCount = new AtomicInteger(1);
+  /*链表结构的缓冲队列长度为128的线程池*/
+  public static ExecutorService sHttpExecutor;
+  /*使用优先任务队列的线程池,需要注意的执行任务的Runnable需要实现{@link java.lang.Comparable}接口以实现优先级*/
+  public static ExecutorService sHttpPriorityExecutor;
+  private static final int DEVICE_INFO_UNKNOWN = 0;
+  private static final int CPU_COUNT = SmartExecutors.getCountOfCPU();
+  private static final int CORE_POOL_SIZE = CPU_COUNT + 1;
+  private static final int MAXIMUM_POOL_SIZE = CPU_COUNT * 2 + 1;
+  private static final int KEEP_ALIVE = 60;
+  private static final BlockingQueue<Runnable> sHttpLinkedWaitQueue =
+      new LinkedBlockingDeque<>(128);
+  private static final BlockingQueue<Runnable> sHttpPriorityWaitQueue =
+      new PriorityBlockingQueue<>(128);
 
-        public Thread newThread(Runnable runnable) {
-            return new SmartThread(Util.checkNotNull(runnable, "Runnable == null"), "EventAsyncOrBackground #" + mCount.getAndIncrement());
-        }
-    };
+  private static final ThreadFactory sHttpThreadFactory = new ThreadFactory() {
+    private final AtomicInteger mCount = new AtomicInteger(1);
 
-    private static final RejectedExecutionHandler eventHandler =
-            new ThreadPoolExecutor.DiscardOldestPolicy();
-
-    static {
-        eventExecutor =
-                new ThreadPoolExecutor(CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE, TimeUnit.SECONDS, eventPoolWaitQueue, eventThreadFactory, eventHandler);
+    public Thread newThread(Runnable r) {
+      Util.checkNotNull(r, "Runnable == null");
+      ThreadWrapper threadWrapper =
+          new ThreadWrapper(r, "HttpExecutor #" + mCount.getAndIncrement());
+      threadWrapper.setDaemon(false);
+      return threadWrapper;
     }
+  };
 
-    /**
-     * Linux中的设备都是以文件的形式存在，CPU也不例外，因此CPU的文件个数就等价与核数。
-     * Android的CPU 设备文件位于/sys/devices/system/cpu/目录，文件名的的格式为cpu\d+。
-     * 引用：http://www.jianshu.com/p/f7add443cd32#，感谢 liangfeizc :)
-     * https://github.com/facebook/device-year-class
-     */
-    public static int getCountOfCPU() {
+  private static final RejectedExecutionHandler rejectedHandler =
+      new ThreadPoolExecutor.DiscardOldestPolicy();
 
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.GINGERBREAD_MR1) {
-            return 1;
-        }
-        int count;
-        try {
-            count = new File("/sys/devices/system/cpu/").listFiles(CPU_FILTER).length;
-        } catch (SecurityException | NullPointerException e) {
-            count = DEVICE_INFO_UNKNOWN;
-        }
-        return count;
+  static {
+    sHttpExecutor =
+        new ThreadPoolExecutor(CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE, TimeUnit.SECONDS,
+            sHttpLinkedWaitQueue, sHttpThreadFactory, rejectedHandler);
+    sHttpPriorityExecutor =
+        new ThreadPoolExecutor(CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE, TimeUnit.SECONDS,
+            sHttpPriorityWaitQueue, sHttpThreadFactory, rejectedHandler);
+  }
+
+  private SmartExecutors() {
+    throw new AssertionError("No instance");
+  }
+
+  /**
+   * Linux中的设备都是以文件的形式存在，CPU也不例外，因此CPU的文件个数就等价与核数。
+   * Android的CPU 设备文件位于/sys/devices/system/cpu/目录，文件名的的格式为cpu\d+。
+   */
+  private static int getCountOfCPU() {
+
+    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.GINGERBREAD_MR1) {
+      return 1;
     }
+    int count;
+    try {
+      count = new File("/sys/devices/system/cpu/").listFiles(CPU_FILTER).length;
+    } catch (SecurityException | NullPointerException e) {
+      count = DEVICE_INFO_UNKNOWN;
+    }
+    return count;
+  }
 
-    private static final FileFilter CPU_FILTER = new FileFilter() {
-        @Override
-        public boolean accept(File pathname) {
+  private static final FileFilter CPU_FILTER = new FileFilter() {
+    @Override public boolean accept(File pathname) {
 
-            String path = pathname.getName();
-            if (path.startsWith("cpu")) {
-                for (int i = 3; i < path.length(); i++) {
-                    if (path.charAt(i) < '0' || path.charAt(i) > '9') {
-                        return false;
-                    }
-                }
-                return true;
-            }
+      String path = pathname.getName();
+      if (path.startsWith("cpu")) {
+        for (int i = 3; i < path.length(); i++) {
+          if (path.charAt(i) < '0' || path.charAt(i) > '9') {
             return false;
+          }
         }
-    };
-
-    private static class SmartThread extends Thread {
-
-        public SmartThread(Runnable runnable, String threadName) {
-            super(runnable, threadName);
-        }
-
-        @Override
-        public void run() {
-            Process.setThreadPriority(THREAD_PRIORITY_BACKGROUND);
-            super.run();
-        }
+        return true;
+      }
+      return false;
     }
+  };
+
+  private static class ThreadWrapper extends Thread {
+
+    ThreadWrapper(Runnable runnable, String threadName) {
+      super(runnable, threadName);
+    }
+
+    @Override public void run() {
+      Process.setThreadPriority(THREAD_PRIORITY_BACKGROUND);
+      super.run();
+    }
+  }
 }

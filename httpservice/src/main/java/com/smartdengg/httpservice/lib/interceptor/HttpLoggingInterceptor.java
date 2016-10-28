@@ -17,19 +17,26 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okhttp3.internal.http.HttpEngine;
 import okio.Buffer;
 import okio.BufferedSource;
 
+import static java.net.HttpURLConnection.HTTP_NOT_MODIFIED;
+import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
+import static okhttp3.internal.http.StatusLine.HTTP_CONTINUE;
+
 /**
- * Created by SmartDengg on 2016/3/31.
+ * 创建时间: 2016/08/09 17:30 <br>
+ * 作者: dengwei <br>
+ * 描述: 网络连接状态拦截器,主要用于打印网络日志,但不包含响应体
  */
 public class HttpLoggingInterceptor implements Interceptor {
 
+  private static String HTTP_TAG = HttpService.getHttpTAG();
+
   private static final int MAX_LOG_LENGTH = 4 * 1000;
   private static final Charset UTF8 = Charset.forName("UTF-8");
-  private final Logger logger;
   private volatile Level level = Level.NONE;
+  private Logger logger;
 
   private static final char TOP_LEFT_CORNER = '╔';
   private static final char TOP_LEFT_CORNER_SINGLE = '┌';
@@ -49,8 +56,9 @@ public class HttpLoggingInterceptor implements Interceptor {
       BOTTOM_LEFT_CORNER_SINGLE + SINGLE_DIVIDER + SINGLE_DIVIDER;
   public static final String MIDDLE_BORDER = MIDDLE_CORNER + SINGLE_DIVIDER + SINGLE_DIVIDER;
 
-  private List<String> exRequestHeaders;
-  private List<String> exResponseHeaders;
+  private List<String> mExRequestHeaders;
+  private List<String> mExResponseHeaders;
+  private List<String> mIgnoredUrls;
 
   public enum Level {
     /** No logs. */
@@ -100,7 +108,7 @@ public class HttpLoggingInterceptor implements Interceptor {
     BODY
   }
 
-  public interface Logger {
+  private interface Logger {
 
     void log(String message);
 
@@ -121,7 +129,7 @@ public class HttpLoggingInterceptor implements Interceptor {
         newline = newline != -1 ? newline : length;
         do {
           int end = Math.min(newline, i + MAX_LOG_LENGTH);
-          Log.d(HttpService.getHttpTAG(),
+          Log.d(HTTP_TAG,
               HttpLoggingInterceptor.HORIZONTAL_DOUBLE_LINE + message.substring(i, end));
           i = end;
         } while (i < newline);
@@ -136,41 +144,58 @@ public class HttpLoggingInterceptor implements Interceptor {
     }
 
     @Override public void logTopBorder() {
-      Log.d(HttpService.getHttpTAG(), HttpLoggingInterceptor.TOP_BORDER);
+      Log.d(HTTP_TAG, HttpLoggingInterceptor.TOP_BORDER);
     }
 
     @Override public void logMiddleBorder() {
-      Log.d(HttpService.getHttpTAG(), HttpLoggingInterceptor.MIDDLE_BORDER);
+      Log.d(HTTP_TAG, HttpLoggingInterceptor.MIDDLE_BORDER);
     }
 
     @Override public void logBottomBorder() {
-      Log.d(HttpService.getHttpTAG(), HttpLoggingInterceptor.BOTTOM_BORDER);
+      Log.d(HTTP_TAG, HttpLoggingInterceptor.BOTTOM_BORDER);
     }
   };
 
+  /**
+   * 创建一个默认的网络日志拦截器实例
+   */
   public static HttpLoggingInterceptor createLoggingInterceptor() {
-    return HttpLoggingInterceptor.createLoggingInterceptor(null, null);
+    return new HttpLoggingInterceptor();
   }
 
-  public static HttpLoggingInterceptor createLoggingInterceptor(List<String> exRequestHeaders,
+  private HttpLoggingInterceptor() {
+    this.logger = DEFAULT;
+  }
+
+  /**
+   * 设置请求头和响应头过滤器
+   *
+   * @param exRequestHeaders 请求头黑名单,如果集合中包含某请求头的'key',则该条请求头不会被打印
+   * @param exResponseHeaders 响应头黑名单,如果集合中包含某响应头的'key',则该条相应头不会被打印
+   */
+  public HttpLoggingInterceptor setExclusiveHeaders(List<String> exRequestHeaders,
       List<String> exResponseHeaders) {
-    return new HttpLoggingInterceptor(exRequestHeaders, exResponseHeaders);
+    this.mExRequestHeaders = exRequestHeaders;
+    this.mExResponseHeaders = exResponseHeaders;
+    return HttpLoggingInterceptor.this;
   }
 
-  public HttpLoggingInterceptor(List<String> exRequestHeaders, List<String> exResponseHeaders) {
-    this(DEFAULT);
-
-    this.exRequestHeaders = exRequestHeaders;
-    this.exResponseHeaders = exResponseHeaders;
+  /**
+   * 设置网络请求地址过滤器
+   *
+   * @param ignoredUrls 集合中的Url,将不会打印任何信息
+   */
+  public HttpLoggingInterceptor setIgnoredUrls(List<String> ignoredUrls) {
+    this.mIgnoredUrls = ignoredUrls;
+    return HttpLoggingInterceptor.this;
   }
 
-  public HttpLoggingInterceptor(Logger logger) {
-    this.logger = logger;
-  }
-
-  /** Change the level at which this interceptor logs. */
+  /**
+   * 更改该网络日志打印等级,默认{@link Level#NONE},即无任何网络日志输出
+   */
   public HttpLoggingInterceptor setLevel(Level level) {
-    this.level = Util.checkNotNull(level, "level == null. Use Level.NONE instead.");
+    Util.checkNotNull(level, "level == null. Use Level.NONE instead.");
+    this.level = level;
     return this;
   }
 
@@ -179,11 +204,16 @@ public class HttpLoggingInterceptor implements Interceptor {
   }
 
   @Override public Response intercept(Chain chain) throws IOException {
+
     Level level = this.level;
 
     Request request = chain.request();
-    if (level == Level.NONE) {
-      return chain.proceed(request);
+    if (level == Level.NONE) return chain.proceed(request);
+
+    if (mIgnoredUrls != null && !mIgnoredUrls.isEmpty()) {
+      for (int i = 0; i < mIgnoredUrls.size(); i++) {
+        if (request.url().toString().contains(mIgnoredUrls.get(i))) return chain.proceed(request);
+      }
     }
 
     boolean logBody = level == Level.BODY;
@@ -206,9 +236,6 @@ public class HttpLoggingInterceptor implements Interceptor {
 
     if (logHeaders) {
       if (hasRequestBody) {
-        // Request body headers are only present when installed as a network interceptor.
-        // Force
-        // them to be included (when available) so there values are known.
         if (requestBody.contentType() != null) {
           logger.log("Content-Type: " + requestBody.contentType());
         }
@@ -219,8 +246,8 @@ public class HttpLoggingInterceptor implements Interceptor {
 
       Headers headers = request.headers();
       Map<String, List<String>> headersMap = headers.toMultimap();
-      if (this.exRequestHeaders != null && this.exRequestHeaders.size() > 0) {
-        for (String name : exRequestHeaders) {
+      if (this.mExRequestHeaders != null && this.mExRequestHeaders.size() > 0) {
+        for (String name : mExRequestHeaders) {
           if (headersMap.containsKey(name)) {
             headersMap.remove(name);
           }
@@ -248,7 +275,7 @@ public class HttpLoggingInterceptor implements Interceptor {
         MediaType contentType = requestBody.contentType();
         if (contentType != null) {
           charset = contentType.charset(UTF8);
-                     /*ignore "image", "audio" and "video"*/
+          /*ignore "image", "audio" and "video"*/
           String type = contentType.type();
           if (requestBody.contentLength() > 0 && type != null && ("text".equals(type)
               || "application".equals(type))) {
@@ -279,8 +306,8 @@ public class HttpLoggingInterceptor implements Interceptor {
     if (logHeaders) {
       Headers headers = response.headers();
       Map<String, List<String>> headersMap = headers.toMultimap();
-      if (this.exResponseHeaders != null && this.exResponseHeaders.size() > 0) {
-        for (String name : exResponseHeaders) {
+      if (this.mExResponseHeaders != null && this.mExResponseHeaders.size() > 0) {
+        for (String name : mExResponseHeaders) {
           if (headersMap.containsKey(name)) {
             headersMap.remove(name);
           }
@@ -295,7 +322,7 @@ public class HttpLoggingInterceptor implements Interceptor {
       /**Outputs Middle_Border*/
       logger.logMiddleBorder();
 
-      if (!logBody || !HttpEngine.hasBody(response)) {
+      if (!logBody || !hasBody(response)) {
         logger.log("<-- END HTTP");
       } else if (bodyEncoded(headers)) {
         logger.log("<-- END HTTP (encoded body omitted)");
@@ -308,7 +335,8 @@ public class HttpLoggingInterceptor implements Interceptor {
           logger.log("<-- END HTTP (" + buffer.size() + "-byte body)");
         } else {
           logger.log("<-- END HTTP (" + buffer.size() + "-byte body omitted)");
-        }      }
+        }
+      }
     }
 
     /**Outputs Middle_Border*/
@@ -324,5 +352,25 @@ public class HttpLoggingInterceptor implements Interceptor {
 
   private static String protocol(Protocol protocol) {
     return protocol == Protocol.HTTP_1_0 ? "HTTP/1.0" : "HTTP/1.1";
+  }
+
+  private static boolean hasBody(Response response) {
+    // HEAD requests never yield a body regardless of the response headers.
+    if (response.request().method().equals("HEAD")) {
+      return false;
+    }
+
+    int responseCode = response.code();
+    if ((responseCode < HTTP_CONTINUE || responseCode >= 200)
+        && responseCode != HTTP_NO_CONTENT
+        && responseCode != HTTP_NOT_MODIFIED) {
+      return true;
+    }
+
+    // If the Content-Length or Transfer-Encoding headers disagree with the
+    // response code, the response is malformed. For best compatibility, we
+    // honor the headers.
+    return Long.parseLong(response.header("Content-Length")) != -1 || "chunked".equalsIgnoreCase(
+        response.header("Transfer-Encoding"));
   }
 }

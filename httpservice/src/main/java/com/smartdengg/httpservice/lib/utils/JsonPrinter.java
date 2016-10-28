@@ -10,15 +10,17 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Created by Joker on 2016/6/2.
+ * 创建时间: 2016/08/09 17:23 <br>
+ * 作者: SmartDengg <br>
+ * 描述: Json格式的日志打印类
  */
 public class JsonPrinter {
 
-  private static final String HTTP_TAG = HttpService.getHttpTAG();
+  private static final String DEFAULT_HTTP_TAG = HttpService.getHttpTAG();
+  private static final ThreadLocal<String> sLocalTag = new ThreadLocal<>();
+  private static final ThreadLocal<Integer> sLocalMethodCount = new ThreadLocal<>();
 
-  /**
-   * Drawing toolbox
-   */
+  /** Drawing toolbox */
   private static final char TOP_LEFT_CORNER = '╔';
   private static final char BOTTOM_LEFT_CORNER = '╚';
   private static final char MIDDLE_CORNER = '╟';
@@ -29,28 +31,55 @@ public class JsonPrinter {
   private static final String BOTTOM_BORDER = BOTTOM_LEFT_CORNER + DOUBLE_DIVIDER + DOUBLE_DIVIDER;
   private static final String MIDDLE_BORDER = MIDDLE_CORNER + SINGLE_DIVIDER + SINGLE_DIVIDER;
 
-  /**
-   * Android's max limit for a log entry is ~4076 bytes,
-   * so 4000 bytes is used as chunk size since default charset
-   * is UTF-8
-   */
+  /** Android平台上log输出的最大长度约等于4076字节,由于默认编码格式为"UTF-8",因此将"4000"作为日志切割阈值 */
   private static final int CHUNK_SIZE = 4000;
 
   /**
-   * It is used for json pretty print
+   * Json格式的字符串缩进长度,默认为"4"
+   * 如:
+   * <pre>
+   * {
+   *     "query": "Pizza",
+   *     "locations": [
+   *         94043,
+   *         90210
+   *     ]
+   * }</pre>
    */
   private static final int JSON_INDENT = 4;
 
-  /**
-   * The minimum stack trace index, starts at this class after two native calls.
-   */
-  private static final int MIN_STACK_OFFSET = 3;
+  /** 因为堆栈信息的打印在JsonPrinter中先后调用了4个函数,因此偏移量的值为4,过滤掉4个函数的调用 */
+  private static final int CALL_STACK_OFFSET = 4;
 
   private JsonPrinter() {
-    throw new IllegalStateException("No instances!");
+    throw new IllegalStateException("No instance!");
   }
 
   public static void json(String json) {
+    printer(json);
+  }
+
+  /** 在该日志输出上指定一个一次性的TAG(默认为通过HttpService设置的全局TAG变量),用于将字符串转换成Json格式打印 */
+  public static void json(String tag, String json) {
+    if (tag != null) sLocalTag.set(tag);
+    printer(json);
+  }
+
+  /** 在该日志输出上指定一个一次性的TAG(默认为通过HttpService设置的全局TAG变量),用于将字符串转换成Json格式打印 */
+  public static void json(String json, Integer methodCount) {
+    if (methodCount != null && methodCount >= 0) sLocalMethodCount.set(methodCount);
+    printer(json);
+  }
+
+  /** 在该日志输出上指定一个一次性的TAG(默认为通过HttpService设置的全局TAG变量)和一个一次性的堆栈调用记录条数(默认为1),用于将字符串转换成Json格式打印 */
+  public static void json(String tag, Integer methodCount, String json) {
+    if (tag != null) sLocalTag.set(tag);
+    if (methodCount != null && methodCount >= 0) sLocalMethodCount.set(methodCount);
+    printer(json);
+  }
+
+  /** 将字符串转成Json格式进行输出 */
+  private static void printer(String json) {
     if (TextUtils.isEmpty(json)) {
       d("Empty/Null json content");
       return;
@@ -81,6 +110,7 @@ public class JsonPrinter {
   }
 
   private static void e(Throwable throwable, String message, Object... args) {
+
     if (throwable != null && message != null) message += " : " + getStackTraceString(throwable);
     if (throwable != null && message == null) message = getStackTraceString(throwable);
     if (message == null) message = "No message/exception is set";
@@ -88,29 +118,27 @@ public class JsonPrinter {
     log(Log.ERROR, message, args);
   }
 
-  /**
-   * This method is synchronized in order to avoid messy of logs' order.
-   */
   private static synchronized void log(int logType, String msg, Object... args) {
 
     String message = createMessage(msg, args);
 
-    logTopBorder(logType, HTTP_TAG);
-    logHeaderContent(logType, HTTP_TAG, 0);
+    String tag = getTag();
+    Integer methodCount = getMethodCount();
+    logTopBorder(logType, tag);
+    logHeaderContent(logType, tag, methodCount);
 
-    //get bytes of message with system's default charset (which is UTF-8 for Android)
     byte[] bytes = message.getBytes();
     int length = bytes.length;
     if (length <= CHUNK_SIZE) {
-      logContent(logType, HTTP_TAG, message);
+      logContent(logType, tag, message);
     } else {
       for (int i = 0; i < length; i += CHUNK_SIZE) {
         int count = Math.min(length - i, CHUNK_SIZE);
         //create a new String with system's default charset (which is UTF-8 for Android)
-        logContent(logType, HTTP_TAG, new String(bytes, i, count));
+        logContent(logType, tag, new String(bytes, i, count));
       }
     }
-    logBottomBorder(logType, HTTP_TAG);
+    logBottomBorder(logType, tag);
   }
 
   private static String createMessage(String message, Object... args) {
@@ -118,23 +146,22 @@ public class JsonPrinter {
   }
 
   private static void logHeaderContent(int logType, String tag, int methodCount) {
-    StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+
+    String level = "";
+    StackTraceElement[] trace = new Throwable().getStackTrace();
+
     logChunk(logType, tag, HORIZONTAL_DOUBLE_LINE + " Thread: " + Thread.currentThread().getName());
     logDivider(logType, tag);
-    String level = "";
 
-    int stackOffset = getStackOffset(trace);
+    int stackOffset = CALL_STACK_OFFSET;
 
     //corresponding method count with the current stack may exceeds the stack trace. Trims the count
-    if (methodCount + stackOffset > trace.length) {
-      methodCount = trace.length - stackOffset - 1;
-    }
+    if (methodCount + stackOffset > trace.length) methodCount = trace.length - stackOffset - 1;
 
     for (int i = methodCount; i > 0; i--) {
       int stackIndex = i + stackOffset;
-      if (stackIndex >= trace.length) {
-        continue;
-      }
+      if (stackIndex >= trace.length) continue;
+
       StringBuilder builder = new StringBuilder();
       builder.append("║ ")
           .append(level)
@@ -194,28 +221,10 @@ public class JsonPrinter {
         Log.wtf(tag, chunk);
         break;
       case Log.DEBUG:
-        // Fall through, log debug by default
       default:
         Log.d(tag, chunk);
         break;
     }
-  }
-
-  /**
-   * Determines the starting index of the stack trace, after method calls made by this class.
-   *
-   * @param trace the stack trace
-   * @return the stack offset
-   */
-  private static int getStackOffset(StackTraceElement[] trace) {
-    for (int i = MIN_STACK_OFFSET; i < trace.length; i++) {
-      StackTraceElement e = trace[i];
-      String name = e.getClassName();
-      if (!name.equals(JsonPrinter.class.getName()) && !name.equals(JsonPrinter.class.getName())) {
-        return --i;
-      }
-    }
-    return -1;
   }
 
   /**
@@ -228,5 +237,27 @@ public class JsonPrinter {
     throwable.printStackTrace(printWriter);
     printWriter.flush();
     return stringWriter.toString();
+  }
+
+  /**
+   * 获取日志输出的TAG,默认情况下是是通过HttpService设置的全局变量
+   */
+  private static String getTag() {
+    String tag = sLocalTag.get();
+    if (tag != null) {
+      sLocalTag.remove();
+      return tag;
+    }
+    return DEFAULT_HTTP_TAG;
+  }
+
+  /**
+   * 获取调用日志输出函数的堆栈信息
+   */
+  private static Integer getMethodCount() {
+    Integer count = sLocalMethodCount.get();
+    if (count != null) sLocalMethodCount.remove();
+    if (count == null || count < 0) count = 1;
+    return count;
   }
 }

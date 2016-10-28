@@ -1,5 +1,6 @@
 package com.smartdengg.httpservice.lib.adapter.callAdapter;
 
+import com.smartdengg.httpservice.lib.utils.Util;
 import java.io.IOException;
 import okhttp3.Request;
 import retrofit2.Call;
@@ -7,47 +8,54 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 /**
- * Created by Joker on 2016/2/19.
- * 自定义CallAdapter，过滤结果与异常，根据状态码增加部分回调接口，提高系统弹性.
+ * 创建时间: 2016/08/09 18:06 <br>
+ * 作者: dengwei <br>
+ * 描述: 自定义HttpCallAdapter，用于返回值类型为HttpCall的接口执行真正的网络操作
  */
 public class HttpCallAdapter<T> implements HttpCall<T> {
 
-  private static int CODE_200 = 200;
-  public static int CODE_204 = 204;
-  public static int CODE_205 = 205;
-  private static int CODE_300 = 300;
+  private static int CODE_204 = 204;
+  private static int CODE_205 = 205;
   private static int CODE_400 = 400;
   private static int CODE_401 = 401;
   private static int CODE_500 = 500;
   private static int CODE_600 = 600;
 
-  private Call<T> delegate;
-  private HttpCallAdapterFactory.MainThreadExecutor callbackExecutor;
-  private int maxRetryCount;
-  private int currentRetryCount = 0;
+  private Call<T> mDelegate;
+  private HttpCallAdapterFactory.MainThreadExecutor mMainThreadExecutor;
+  private final int mMaxRetryCount;
+  private int mCurrentRetryCount = 0;
+  private HttpCallAdapterFactory.Callback mCallback;
 
-  HttpCallAdapter(Call<T> delegate, HttpCallAdapterFactory.MainThreadExecutor mainThreadExecutor,
-      int maxRetryCount) {
-    this.delegate = delegate;
-    this.callbackExecutor = mainThreadExecutor;
-    this.maxRetryCount = maxRetryCount;
+  public HttpCallAdapter(Call<T> delegate,
+      HttpCallAdapterFactory.MainThreadExecutor mainThreadExecutor, int maxRetryCount,
+      HttpCallAdapterFactory.Callback callback) {
+    this.mDelegate = delegate;
+    this.mMainThreadExecutor = mainThreadExecutor;
+    this.mMaxRetryCount = maxRetryCount;
+    this.mCallback = callback;
   }
 
   @Override public Response<T> execute() throws IOException {
-    return delegate.execute();
+    return mDelegate.execute();
   }
 
   @Override public void enqueue(final HttpCallback<T> callback) {
+    Util.checkNotNull(callback, "callback == null");
 
-    delegate.enqueue(new Callback<T>() {
-      @Override public void onResponse(Call<T> call, final Response<T> response) {
+    mDelegate.enqueue(new Callback<T>() {
+      @Override public void onResponse(final Call<T> call, final Response<T> response) {
 
-        callbackExecutor.execute(new Runnable() {
+        mMainThreadExecutor.execute(new Runnable() {
           @Override public void run() {
+
+            if (HttpCallAdapter.this.mCallback != null) {
+              HttpCallAdapter.this.mCallback.onResponse(response);
+            }
+
             int code = response.code();
-            if (code >= CODE_200 && code < CODE_300) {
-              T body = response.body();
-              if (code == CODE_204 || code == CODE_205 || body == null) {
+            if (response.isSuccessful()) {
+              if (code == CODE_204 || code == CODE_205 || response.body() == null) {
                 callback.noContent(response, HttpCallAdapter.this);
               } else {
                 callback.success(response.body(), HttpCallAdapter.this);
@@ -66,17 +74,17 @@ public class HttpCallAdapter<T> implements HttpCall<T> {
         });
       }
 
-      @Override public void onFailure(final Call<T> call, final Throwable throwable) {
+      @Override public void onFailure(Call<T> call, final Throwable t) {
 
-        if (currentRetryCount++ < maxRetryCount) {
+        if (mCurrentRetryCount++ < mMaxRetryCount) {
           call.clone().enqueue(this);
         } else {
-          callbackExecutor.execute(new Runnable() {
+          mMainThreadExecutor.execute(new Runnable() {
             @Override public void run() {
-              if (throwable instanceof IOException) {
-                callback.networkError((IOException) throwable, HttpCallAdapter.this);
+              if (t instanceof IOException) {
+                callback.networkError((IOException) t, HttpCallAdapter.this);
               } else {
-                callback.unexpectedError(throwable, HttpCallAdapter.this);
+                callback.unexpectedError(t, HttpCallAdapter.this);
               }
             }
           });
@@ -86,23 +94,22 @@ public class HttpCallAdapter<T> implements HttpCall<T> {
   }
 
   @Override public void cancel() {
-    delegate.cancel();
+    mDelegate.cancel();
   }
 
   @Override public boolean isExecuted() {
-    return delegate.isExecuted();
+    return mDelegate.isExecuted();
   }
 
   @Override public boolean isCanceled() {
-    return delegate.isCanceled();
+    return mDelegate.isCanceled();
   }
 
-  @SuppressWarnings("CloneDoesntCallSuperClone")
-  @Override public HttpCall<T> clone() {
-    return new HttpCallAdapter<>(delegate.clone(), this.callbackExecutor, this.maxRetryCount);
+  @SuppressWarnings("CloneDoesntCallSuperClone") @Override public HttpCall<T> clone() {
+    return new HttpCallAdapter<>(mDelegate.clone(), mMainThreadExecutor, mMaxRetryCount, mCallback);
   }
 
   @Override public Request request() {
-    return delegate.request();
+    return mDelegate.request();
   }
 }

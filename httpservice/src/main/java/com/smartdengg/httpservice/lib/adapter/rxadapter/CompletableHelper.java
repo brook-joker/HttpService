@@ -1,18 +1,3 @@
-/*
- * Copyright (C) 2016 Square, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.smartdengg.httpservice.lib.adapter.rxadapter;
 
 import com.smartdengg.httpservice.lib.errors.HttpException;
@@ -21,8 +6,7 @@ import retrofit2.Call;
 import retrofit2.CallAdapter;
 import retrofit2.Response;
 import rx.Completable;
-import rx.Completable.CompletableOnSubscribe;
-import rx.Completable.CompletableSubscriber;
+import rx.CompletableSubscriber;
 import rx.Subscription;
 import rx.exceptions.Exceptions;
 import rx.functions.Action0;
@@ -33,7 +17,7 @@ final class CompletableHelper {
     return new CompletableCallAdapter();
   }
 
-  private static final class CompletableCallOnSubscribe implements CompletableOnSubscribe {
+  private static final class CompletableCallOnSubscribe implements Completable.OnSubscribe {
     private final Call originalCall;
 
     CompletableCallOnSubscribe(Call originalCall) {
@@ -70,7 +54,7 @@ final class CompletableHelper {
     }
   }
 
-  static class CompletableCallAdapter implements CallAdapter<Completable> {
+  private static class CompletableCallAdapter implements CallAdapter<Completable> {
 
     @Override public Type responseType() {
       return Void.class;

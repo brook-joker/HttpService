@@ -60,6 +60,7 @@ dependencies {
 
   /*Square Library*/
   compile rootProject.ext.dependencies.libRetrofit2
+  compile rootProject.ext.dependencies.libOkhttp
 
   /*ReactiveX Library*/
   compile rootProject.ext.dependencies.libRxJava
